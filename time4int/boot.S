@@ -125,3 +125,19 @@ _start:
 	jal main
 	
 loop:	j loop
+
+.globl enable_interrupt
+enable_interrupt:
+	//enable the timer interrupt
+	csrr t0, mie
+	li t1, 0x10000
+	or t0, t0, t1
+	csrw mie, t0
+	
+	//enable interrupts globally
+	csrr t0, mstatus
+	li t1, 0x8
+	or t0, t0, t1
+	csrw mstatus, t0
+	
+	jr ra
