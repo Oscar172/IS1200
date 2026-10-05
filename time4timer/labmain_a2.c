@@ -25,7 +25,7 @@ void update_time(void){
 
   int hours = ((mytime >> 20) & 0xF) * 10 + ((mytime >> 16) & 0xF);
 
-  update_time(); //tick(&mytime);
+  tick(&mytime); //tick(&mytime);
 
   //Tick resets mytime when seconds > 59.
   if (mytime == 0) {

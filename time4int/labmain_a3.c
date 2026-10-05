@@ -32,7 +32,7 @@ void update_time(void)
 
   int hours = ((mytime >> 20) & 0xF) * 10 + ((mytime >> 16) & 0xF);
 
-  tick(&mytime);
+  tick(&mytime); //tick(&mytime);
 
   //Tick resets mytime when seconds > 59.
   if (mytime == 0) {
@@ -71,7 +71,7 @@ void handle_interrupt(unsigned cause) {
     set_displays(4, (mytime >> 16) & 0xF);
     set_displays(5, (mytime >> 20) & 0xF);
 
-    tick(&mytime);  //tick updates the time by one second, (&mytime) means "the address to mytime" so that the function can change the variable
+    update_time();// old tick(&mytime);, updates the time by one second
   }
 }
 
