@@ -18,6 +18,29 @@ int mytime = 0x5957;
 int timeoutcount = 0;
 char textstring[] = "text, more text, and even more text!";
 
+void update_time(void){
+  
+  //Reads minutes and hours from mytime.
+  int minutes = ((mytime >> 12) & 0xF) * 10 + ((mytime >> 8) & 0xF);
+
+  int hours = ((mytime >> 20) & 0xF) * 10 + ((mytime >> 16) & 0xF);
+
+  update_time(); //tick(&mytime);
+
+  //Tick resets mytime when seconds > 59.
+  if (mytime == 0) {
+    minutes++;
+
+    if (minutes == 60) {
+        minutes = 0;
+        hours = (hours + 1) % 100;
+    }
+
+      // Store hours and minutes; seconds are now 00.
+      mytime = ((hours / 10) << 20) | ((hours % 10) << 16) | ((minutes / 10) << 12) | ((minutes % 10) << 8);
+  }
+}
+
 /* Below is the function that will be called when an interrupt is triggered. */
 void handle_interrupt(unsigned cause) 
 {}
@@ -75,83 +98,83 @@ int get_btn(void){
 /* Your code goes into main as well as any needed functions. */
 int main()
 {
-    labinit();
+  labinit();
 
-    volatile int *timer_status = (volatile int *) 0x04000020;
+  volatile int *timer_status = (volatile int *) 0x04000020;
 
-    int leds = 0;
-    int led_timeoutcount = 0;
+  int leds = 0;
+  int led_timeoutcount = 0;
 
-    set_leds(leds);
+  set_leds(leds);
 
-    while (leds < 15) {  
+  while (leds < 15) {  
 
-      if (*timer_status & 0x1){
-        *timer_status = 0;
-        led_timeoutcount++;
+    if (*timer_status & 0x1){
+      *timer_status = 0;
+      led_timeoutcount++;
 
-        if (led_timeoutcount == 10){
-          leds++;
-          set_leds(leds);
-          led_timeoutcount = 0;
-        }
+      if (led_timeoutcount == 10){
+        leds++;
+        set_leds(leds);
+        led_timeoutcount = 0;
+      }
+    }
+  }
+
+  // Enter a forever loop
+  while (1) {
+  
+    if (get_sw() & 0x80) { //
+        break;
+    }
+
+    if (get_btn()) {
+
+      int switches = get_sw();
+
+      int value = switches & 0x3F;
+      int select = (switches >> 8) & 0x3;
+
+      int tens = value / 10;
+      int ones = value % 10;
+
+      if (select == 1) {
+          mytime = (mytime & 0xFFFF00) | (tens << 4) | ones;
+      }
+
+      if (select == 2) {
+          mytime = (mytime & 0xFF00FF) | (tens << 12) | (ones << 8);
+      }
+  
+      if (select == 3) {
+          mytime = (mytime & 0x00FFFF) | (tens << 20) | (ones << 16);
       }
     }
 
-    // Enter a forever loop
-    while (1) {
-      
-        if (get_sw() & 0x80) {
-            break;
-        }
+    if(*timer_status & 0x1){
 
-        if (get_btn()) {
+      *timer_status = 0;
+      timeoutcount++;
 
-            int switches = get_sw();
+      if (timeoutcount == 10){
 
-            int value = switches & 0x3F;
-            int select = (switches >> 8) & 0x3;
+        set_displays(0, mytime & 0xF);
+        set_displays(1, (mytime >> 4) & 0xF);
 
-            int tens = value / 10;
-            int ones = value % 10;
+        set_displays(2, (mytime >> 8) & 0xF);
+        set_displays(3, (mytime >> 12) & 0xF);
 
-            if (select == 1) {
-                mytime = (mytime & 0xFFFF00) | (tens << 4) | ones;
-            }
+        set_displays(4, (mytime >> 16) & 0xF);
+        set_displays(5, (mytime >> 20) & 0xF);
 
-            if (select == 2) {
-                mytime = (mytime & 0xFF00FF) | (tens << 12) | (ones << 8);
-            }
-        
-            if (select == 3) {
-                mytime = (mytime & 0x00FFFF) | (tens << 20) | (ones << 16);
-            }
-        }
+        time2string(textstring, mytime);
+        display_string(textstring);
 
-            if(*timer_status & 0x1){
+        update_time(); //tick(&mytime);
 
-              *timer_status = 0;
-              timeoutcount++;
-
-              if (timeoutcount == 10){
-
-                set_displays(0, mytime & 0xF);
-                set_displays(1, (mytime >> 4) & 0xF);
-
-                set_displays(2, (mytime >> 8) & 0xF);
-                set_displays(3, (mytime >> 12) & 0xF);
-
-                set_displays(4, (mytime >> 16) & 0xF);
-                set_displays(5, (mytime >> 20) & 0xF);
-
-                time2string(textstring, mytime);
-                display_string(textstring);
-
-                tick(&mytime);
-
-                timeoutcount = 0;
-              }
-            }
+        timeoutcount = 0;
+      }
     }
-    return 0;
+  }
+  return 0;
 }

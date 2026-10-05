@@ -25,6 +25,29 @@ char textstring[] = "text, more text, and even more text!";
 
 void set_displays(int display_number, int value);  //functionprototype 
 
+void update_time(void)
+{
+  //Reads minutes and hours from mytime.
+  int minutes = ((mytime >> 12) & 0xF) * 10 + ((mytime >> 8) & 0xF);
+
+  int hours = ((mytime >> 20) & 0xF) * 10 + ((mytime >> 16) & 0xF);
+
+  tick(&mytime);
+
+  //Tick resets mytime when seconds > 59.
+  if (mytime == 0) {
+    minutes++;
+
+    if (minutes == 60) {
+        minutes = 0;
+        hours = (hours + 1) % 100;
+    }
+
+      // Store hours and minutes; seconds are now 00.
+      mytime = ((hours / 10) << 20) | ((hours % 10) << 16) | ((minutes / 10) << 12) | ((minutes % 10) << 8);
+  }
+}
+
 /* Below is the function that will be called when an interrupt is triggered. */
 void handle_interrupt(unsigned cause) {
 
