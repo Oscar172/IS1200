@@ -31,13 +31,13 @@ void update_time(void){
   if (mytime == 0) {
     minutes++;
 
-    if (minutes == 60) {
-        minutes = 0;
-        hours = (hours + 1) % 100;
+    if (minutes == 60) { // if minutes each 60, we "roll" over to the next hour
+      minutes = 0;     // reset the minutes
+      hours = (hours + 1) % 24;  // increase hours, when 24 % 24 = 0 -> (23:59:59 -> 00:00:00)
     }
 
-      // Store hours and minutes; seconds are now 00.
-      mytime = ((hours / 10) << 20) | ((hours % 10) << 16) | ((minutes / 10) << 12) | ((minutes % 10) << 8);
+    // Store hours and minutes; seconds are now 00.
+    mytime = ((hours / 10) << 20) | ((hours % 10) << 16) | ((minutes / 10) << 12) | ((minutes % 10) << 8);
   }
 }
 
@@ -48,16 +48,18 @@ void handle_interrupt(unsigned cause)
 /* Add your code here for initializing interrupts. */
 void labinit(void){
 
-  volatile int *timer_status = (volatile int *) 0x04000020;
-  volatile int *timer_control = (volatile int *) 0x04000024;
-  volatile int *timer_periodl = (volatile int *) 0x04000028;
-  volatile int *timer_periodh = (volatile int *) 0x0400002C;
+  volatile int *timer_status = (volatile int *) 0x04000020;   // timer status register: read bit 0 (T0) to detect a timeout. Is used to check if a time-out has occured, if T0-flag is 1
+  volatile int *timer_control = (volatile int *) 0x04000024;  // timer control register: START, STOP, CONTINUOUS mode and generating interrupts
+  volatile int *timer_periodl = (volatile int *) 0x04000028;  // lower 16 bits of the timer period value
+  volatile int *timer_periodh = (volatile int *) 0x0400002C;  // upper 16 bits of the timer period value
 
-  *timer_periodl = 0xC6BF;
+  // Timers frequenze is 30MHz, for a period of 100ms we need 30 000 000 x 0.1 = 3 000 000 cycles 
+  *timer_periodl = 0xC6BF; // 0xC6Bf + 0x002D = 2 999 999, <-- timer counts cycles from 0 
   *timer_periodh = 0x002D;
 
-  *timer_status = 0;
-  *timer_control = 0x6;
+  *timer_status = 0; // reset any previous timeout
+  *timer_control = 0x6; // 0110: START and CONT is enabled
+  // 0x6 = 0110, START and CONT is 1, whilst ITO is 0. 
 
 }
 
@@ -100,23 +102,23 @@ int main()
 {
   labinit();
 
-  volatile int *timer_status = (volatile int *) 0x04000020;
+  volatile int *timer_status = (volatile int *) 0x04000020; //pointer to timers statusregistry
 
   int leds = 0;
   int led_timeoutcount = 0;
 
   set_leds(leds);
 
-  while (leds < 15) {  
+  while (leds < 15) {  // repeat until all four LEDs are on (15 = 1111)
 
-    if (*timer_status & 0x1){
-      *timer_status = 0;
-      led_timeoutcount++;
+    if (*timer_status & 0x1){ // tries only bit 0 (time-out-flag), if flag is 1 a timerperiod has passed (100ms).    
+      *timer_status = 0;  // clear the time-out flag
+      led_timeoutcount++; // counts a found time-out
 
-      if (led_timeoutcount == 10){
-        leds++;
-        set_leds(leds);
-        led_timeoutcount = 0;
+      if (led_timeoutcount == 10){ // 10 time-outs is one "second"
+        leds++;                    // increase the LED counter by one
+        set_leds(leds);            // Show the new value on the LEDs
+        led_timeoutcount = 0;      // Reset the timeout counter for the next second / iteration
       }
     }
   }
@@ -153,10 +155,10 @@ int main()
 
     if(*timer_status & 0x1){
 
-      *timer_status = 0;
-      timeoutcount++;
+      *timer_status = 0;  // clear the time-out flag 
+      timeoutcount++;     // counts a found timeout
 
-      if (timeoutcount == 10){
+      if (timeoutcount == 10){  // update the displays and clock after ten timeouts (1 second)
 
         set_displays(0, mytime & 0xF);
         set_displays(1, (mytime >> 4) & 0xF);
@@ -170,9 +172,9 @@ int main()
         time2string(textstring, mytime);
         display_string(textstring);
 
-        update_time(); //tick(&mytime);
+        update_time(); //tick(&mytime); increment time by one second
 
-        timeoutcount = 0;
+        timeoutcount = 0; // Reset the counter to count the the next ten timeouts
       }
     }
   }

@@ -31,12 +31,12 @@ void update_time(void)
     minutes++;
 
     if (minutes == 60) {
-        minutes = 0;
-        hours = (hours + 1) % 100;
+      minutes = 0;
+      hours = (hours + 1) % 100;
     }
 
-      // Store hours and minutes; seconds are now 00.
-      mytime = ((hours / 10) << 20) | ((hours % 10) << 16) | ((minutes / 10) << 12) | ((minutes % 10) << 8);
+    // Store hours and minutes; seconds are now 00.
+    mytime = ((hours / 10) << 20) | ((hours % 10) << 16) | ((minutes / 10) << 12) | ((minutes % 10) << 8);
   }
 }
 
@@ -50,13 +50,13 @@ void labinit(void)
 
 void set_leds(int led_mask){
 
-  volatile int *leds = (volatile int *) 0x04000000; //leds är en pekare till ett heltal, volatile kollar om värdet förändras.
+  volatile int *leds = (volatile int *) 0x04000000; // manages the 10 LEDs, 1 lights up
   *leds = led_mask & 0x3FF; // 0011 1111 1111 10 leds 
 
 }
 
 void set_displays(int display_number, int value){
-
+// 0 lights up, digits[2] => 0x24 = 0 010 0100
   int digits[10] = {
     0x40, 0x79, 0x24, 0x30, 0x19, 
     0x12, 0x02, 0x78, 0x00, 0x10 
@@ -69,15 +69,15 @@ void set_displays(int display_number, int value){
 
 int get_sw(void){
 
-  volatile int *switches = (volatile int *) 0x04000010; 
-  return *switches & 0x3FF;
+  volatile int *switches = (volatile int *) 0x04000010;  // *switches reads hardwareregister
+  return *switches & 0x3FF; // & 0x3FF saves only the 10 lowest bits
 
 }
 
 int get_btn(void){
 
   volatile int *button = (volatile int *) 0x040000d0;
-  return *button & 0x1;
+  return *button & 0x1; // returns 1 if pressed
 
 }
 
@@ -98,48 +98,54 @@ int main()
 
   // Enter a forever loop
   while (1) {
-    
+  
+    set_displays(0, mytime & 0xF);
+    set_displays(1, (mytime >> 4) & 0xF);
 
-      set_displays(0, mytime & 0xF);
-      set_displays(1, (mytime >> 4) & 0xF);
+    set_displays(2, (mytime >> 8) & 0xF);
+    set_displays(3, (mytime >> 12) & 0xF);
 
-      set_displays(2, (mytime >> 8) & 0xF);
-      set_displays(3, (mytime >> 12) & 0xF);
+    set_displays(4, (mytime >> 16) & 0xF);
+    set_displays(5, (mytime >> 20) & 0xF);
 
-      set_displays(4, (mytime >> 16) & 0xF);
-      set_displays(5, (mytime >> 20) & 0xF);
+    if (get_sw() & 0x80) { // switch if on --> break (SW8)
+        break;
+    }
 
-      if (get_sw() & 0x80) {
-          break;
+    if (get_btn()) {
+
+      int switches = get_sw();
+
+      int value = switches & 0x3F; // the value from the switches gets stored in value, 
+      int select = (switches >> 8) & 0x3;
+
+      int tens = value / 10; // removes the one digit and leaves the ten didigt.          39/10 = 3
+      int ones = value % 10; // the remainder after divisin by 10 leaves the one digit,   39 % 10 = 9 
+
+      if (select == 1) { // Update the seconds when the switches are 01
+          mytime = (mytime & 0xFFFF00) | (tens << 4) | ones; // clear old seconds (lowest 8 bits), move tens digit into bits 4-7, place one digits in bits 0-3 
+      }
+/*
+      0x00123456
+      0x00123400
+      0x00000030
+      0x00000009
+      after OR:
+      0x00123439
+*/
+      if (select == 2) { // Update the minutes when the switches are 10
+          mytime = (mytime & 0xFF00FF) | (tens << 12) | (ones << 8); // clear old minutes (bits 8-15), move tens bits (12-15), move ones bits (8-11)
       }
 
-      if (get_btn()) {
-
-          int switches = get_sw();
-
-          int value = switches & 0x3F;
-          int select = (switches >> 8) & 0x3;
-
-          int tens = value / 10;
-          int ones = value % 10;
-
-          if (select == 1) {
-              mytime = (mytime & 0xFFFF00) | (tens << 4) | ones;
-          }
-
-          if (select == 2) {
-              mytime = (mytime & 0xFF00FF) | (tens << 12) | (ones << 8);
-          }
-
-          if (select == 3) {
-              mytime = (mytime & 0x00FFFF) | (tens << 20) | (ones << 16);
-          }
+      if (select == 3) { // Update the hours when the switches are 11
+          mytime = (mytime & 0x00FFFF) | (tens << 20) | (ones << 16); // clear hours (bits 16-23), move tens (20-23), move ones (16-19)
       }
+    }
 
-      time2string(textstring, mytime);
-      display_string(textstring);
-      delay(2300);
-      update_time(); //tick(&mytime);
+    time2string(textstring, mytime);
+    display_string(textstring);
+    delay(2300);
+    update_time(); //tick(&mytime);
   }
   return 0;
 }

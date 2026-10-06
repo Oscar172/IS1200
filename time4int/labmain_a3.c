@@ -39,12 +39,12 @@ void update_time(void)
     minutes++;
 
     if (minutes == 60) {
-        minutes = 0;
-        hours = (hours + 1) % 100;
+      minutes = 0;
+      hours = (hours + 1) % 100;
     }
 
-      // Store hours and minutes; seconds are now 00.
-      mytime = ((hours / 10) << 20) | ((hours % 10) << 16) | ((minutes / 10) << 12) | ((minutes % 10) << 8);
+    // Store hours and minutes; seconds are now 00.
+    mytime = ((hours / 10) << 20) | ((hours % 10) << 16) | ((minutes / 10) << 12) | ((minutes % 10) << 8);
   }
 }
 
@@ -88,7 +88,7 @@ void labinit(void){
   *timer_periodh = 0x002D;
 
   *timer_status = 0; // resets timeoutFlag to 0, for safety
-  *timer_control = 0x7; //enable timer interrupts ITO, continuous mode CONT, and start the timer START (0x7 = 0111)
+  *timer_control = 0x7; //enable timer interrupts ITO (enables timer so it can ask for interrupts), continuous mode CONT, and start the timer START (0x7 = 0111)
 
   enable_interrupt(); // calls function in boot.S, that allows the processor to recieve interrupts
 

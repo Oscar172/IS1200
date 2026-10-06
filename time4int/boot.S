@@ -126,18 +126,11 @@ _start:
 	
 loop:	j loop
 
-.globl enable_interrupt
+.globl enable_interrupt	// Make the function visible so it can be vcalled from C
 enable_interrupt:
-	//enable the timer interrupt
-	csrr t0, mie
-	li t1, 0x10000
-	or t0, t0, t1
-	csrw mie, t0
-	
-	//enable interrupts globally
-	csrr t0, mstatus
-	li t1, 0x8
-	or t0, t0, t1
-	csrw mstatus, t0
-	
-	jr ra
+
+    li t0, 0x10000      // mask (bit 16)
+    csrs mie, t0        // enable the interrupt selected by the mask in t0, mie = mie OR t0
+    csrsi mstatus, 0x8  // set bit 3 to enable interrupts globally, mstatus = mstatus OR 0x8
+
+    jr ra				// return to labinit
